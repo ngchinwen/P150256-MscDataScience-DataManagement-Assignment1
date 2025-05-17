@@ -515,11 +515,13 @@ rating only occurs around 10.8% of the time.
     ## 
     ##     intersect, setdiff, setequal, union
 
-![](ass1_files/figure-gfm/unnamed-chunk-19-1.png)<!-- --> The x-axis is
-the rating, the left y-axis points to the frequency of the rating and
-the right y-axis is the average review count of a business with that
-rating. The green is number of businesses with that star rating and blue
-is average number of reviews for all businesses per star rating.
+![](ass1_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+
+The x-axis is the rating, the left y-axis points to the frequency of the
+rating and the right y-axis is the average review count of a business
+with that rating. The green is number of businesses with that star
+rating and blue is average number of reviews for all businesses per star
+rating.
 
 As can be seen, it does not follow the same proportion for the
 frequency. The top three highest average review counts are the same as
