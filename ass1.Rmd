@@ -10,9 +10,7 @@ always_allow_html: true
 ---
 
 ```{r setup, include=FALSE}
-options(knitr.kable.NA = "NA",
-        knitr.kable.format = "html",
-        knitr.kable.max_rows = 10)
+options(knitr.kable.max_rows = 10)
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 ```
 
@@ -187,7 +185,7 @@ print(cursor.fetchall())
 
 After that, when we look at the columns for yelp_review:
 
-```{python}
+```{python eval=FALSE}
 cursor.execute('DESCRIBE yelp_review')
 print(cursor.fetchall())
 ```
@@ -733,7 +731,6 @@ wordcloud(
   words = d3$term,
   freq = d3$percent_freq,
   min.freq = 1,
-  scale = c(10, 0),
   colors = colorRampPalette(brewer.pal(10, "Spectral"))(length(d3$term)),
   ordered.colors = T,
   random.order = FALSE,
@@ -790,7 +787,6 @@ processed_text<- data.frame(text = docs, stringsAsFactors = FALSE)
 gen_word_pairs_ori <- processed_text %>%
   unnest_tokens(bigram,text,token = "ngrams", n = 2) %>%
   count(bigram, sort = TRUE) %>% separate(bigram, c("word1", "word2"), sep = " ")
-gen_word_pairs_ori
 ```
 
 ```{r}
