@@ -1,13 +1,15 @@
 ---
-title: "Using Text Mining Analysis and User Network Analysis to Improve the Rating of a Poorly-Performing Business"
+title: "Using Text Mining Analysis to Make Suggestions to Improve the Rating of a Poorly-Rated Business"
 subtitle: "STQD6324 Data Management - Assignment 1"
 author: "Ng Chin Wen"
 date: "2025-05-11"
-output: github_document
+output: html_notebook
+code_folding: hide
+bibliography: references.json
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 ```
 
 For an interactive HTML version of this document, click this link:
@@ -16,9 +18,9 @@ For an interactive HTML version of this document, click this link:
 
 ## 1. Introduction {.tabset .tabset-pills}
 
-### \*
+### -
 
-The dataset was sourced from Yelp. In the initial compressed file is another .tar file which contains the dataset. The yelp_dataset.tar file contains 5 JSON files; business.json, checkin.json, tip.json, user.json, review.json.
+The dataset was sourced from Yelp @yelp. In the initial compressed file is another .tar file which contains the dataset. The yelp_dataset.tar file contains 5 JSON files; yelp_academic_dataset_business.json, yelp_academic_dataset_checkin.json, yelp_academic_dataset_tip.json, yelp_academic_dataset_user.json, yelp_academic_dataset_review.json, henceforth will be referred to as business.json, checkin.json tip.json, user.json, review.json. However, the main JSON files of concern are business.json, user.json, and review.json.
 
 The business.json contains information related to the business including its location and some of its attributes. The reviews.json contains the actual text of the reviews and its associated rating and other information. The users.json contains information about Yelp's userbase including their friend network along with associated information about votes and compliments submitted to that user by other users.
 
@@ -32,18 +34,14 @@ Hive was used to store the large files (difficult or impossible to store) and da
 
 -   Identify top-rated businesses - determine which businesses receive the highest ratings overall, in specific categories (e.g., restaurants, cafes, hair salons), or in a location.
 
--   Find Common Keywords in Positive and Negative Reviews To extract and analyze frequently used keywords in high-rated vs. low-rated reviews to understand common customer praises and complaints.
-
--   Analyze customer sentiment of Yelp reviews across different businesses using text-based analysis, and make recommendations based on that.
-
--   Conduct a network analysis of reviewers and their followers to analyze whether influence on followers such as review count and rating.
+-   Analyze customer sentiment based on Yelp reviews using text-based analysis, and make recommendations based on that.
 
 ### 1.2 Summary of business.json
 
 Below is a summary of the original columns and the type of data that was stored inside. For columns that were JSON object structures (struct), they had to be expanded out as well.
 
 | Name | Description | Data type |
-|---------------|-------------------------------------------|---------------|
+|-------------------|----------------------------------|-------------------|
 | business_id | A 22-character string containing a uinque ID for the business - used to connect reviews, category | string |
 | name | The name of the business | string |
 | address | The address of the business | string |
@@ -62,7 +60,7 @@ Below is a summary of the original columns and the type of data that was stored 
 ### 1.3 Summary of review.json
 
 | Name | Description | Data type |
-|----------------|-----------------------------------------|----------------|
+|-------------------|----------------------------------|-------------------|
 | review_id | 22-character unique review ID | string |
 | user_id | ID for the user that wrote the review - maps to user.json | string |
 | business_id | ID of the business the review is for - maps to business.json | string |
@@ -73,32 +71,16 @@ Below is a summary of the original columns and the type of data that was stored 
 | funny | Number of 'funny' votes received from other users | integer |
 | cool | Number of 'cool' votes received from other users | integer |
 
-### 1.4 Summary of user.json
-
-| Name | Description | Data type |
-|--------------|--------------------------------------------|--------------|
-| user_id | 22-character unique user ID - maps to review.json | string |
-| name | Name of the user's first name | string |
-| review_count | number of reviews they've written | integer |
-| yelping_since | The date the user registered on Yelp | string |
-| friends | List of user's friends - friends are mutual followers | string array |
-| useful | Number of 'useful' votes received from other users |  |
-| funny | Number of 'useful' votes received from other users |  |
-| cool | Number of 'useful' votes received from other users |  |
-| fans | Number of fans - Fans are other users |  |
-| elite | Years where a user was 'elite'. An 'Elite' member is someone recognised by Yelp to be trusted reviewers. |  |
-| average_stars | Average star rating |  |
-| compliment\_\* | 11 columns defined by the number of \* compliments received by the user where \* is hot, more, profile, cute, list, note, plain, cool, funny, writer, photo | 11 columns |
-
-## 2. Data Storage and Pre-processing {.tabset .tabset-pills}
+## 2. Data Storage and Set-Up {.tabset .tabset-pills}
 
 ### 2.1 Data Storage Using Hadoop
 
-Since reviews and users are very large (5GB and 3GB respectively), they cannot easily be manipulated in R or Python. Because of those files in particular, all 5 JSON files had to be moved to the virtualbox maria_dev folder using [WinSCP](https://winscp.net/eng/download.php). Then all the files were converted into Hive tables using Spark.
+Since reviews and users are very large (5GB and 3GB respectively), they cannot easily be manipulated in R or Python. Because of those files in particular, all JSON files were moved to the VirtualBox local folders using [WinSCP](https://winscp.net/eng/download.php). Then all the files were converted into Hive tables using Spark.
 
 An example of a script using Spark.
 
-```{python eval=FALSE}
+```         
+## To be run in the Virtual Machine
 from pyspark.sql import SparkSession
 
 spark = SparkSession.builder \
@@ -112,9 +94,28 @@ df.printSchema()
 
 Another example of checkin's schema when turning the checkin json to a hive table. ![](images/clipboard-3799294681.png)
 
-### 2.2 Setting up the Workstation
+However, the JSON file for yelp_reviews' text file kept overflowing into business_id or returning back blank. After reading around, \\n newline for Hive causes it to split it into a new line. Thus, to avoid this, all \n in the text column for review.json was replaced by a space before it was converted to a Hive table.
 
-Since there was a specially made environment made to interact with the hadoop framework, the conda environment has to be set to that from whatever the default was.
+```         
+## To be run in the Virtual Machine
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import regexp_replace
+
+spark = SparkSession.builder \
+    .appName("JSON to Hive") \
+    .enableHiveSupport() \
+    .getOrCreate()
+
+df_review = spark.read.json("hdfs:///user/maria_dev/yelp/yelp_academic_dataset_review.json")
+df_review = df_review.withColumn("text",regexp_replace("text",r'\n',' '))
+
+# Save as Hive table
+df_review.write.mode("overwrite").saveAsTable("yelp_review")
+```
+
+### 2.2 Setting up R
+
+For my specific case, since I had made a conda environment made to the hadoop framework, the conda environment within R also has to be set to that.
 
 ```{r}
 reticulate::use_condaenv(condaenv ="C:/ProgramData/anaconda3/envs/ukm_stqd6324",required = TRUE)
@@ -142,14 +143,14 @@ def to_pd(cursor):
   return pd.DataFrame(data, columns=columns)
 ```
 
-When looking at all the databases stored in Hive, I uploaded the following tables. The names match the name of aforementioned JSON files described before. *yelp_business_category* is a table based on the 'category' column in yelp_business.
+When looking at all the databases stored in Hive, I uploaded the following tables. The names match the name of aforementioned JSON files described before. *yelp_business_category* is a table based on the 'category' column in yelp_business that was expanded and its comma-separated list of categories pulled out.
 
 ```{python eval=FALSE}
 cursor.execute('SHOW TABLES')
 print(cursor.fetchall())
 ```
 
-### 2.3 Example of querying
+#### Example of querying
 
 1.  Connect and run SQL query in python and turn it into a pd dataframe.
 
@@ -171,14 +172,14 @@ a<-as.data.frame(reticulate::py$yelp_df)
 a
 ```
 
-This is the columns
+This is the extended description for yelp_business.
 
 ```{python eval=FALSE}
 cursor.execute('DESCRIBE EXTENDED yelp_business')
 print(cursor.fetchall())
 ```
 
-Exploratory Data Analysis, when selecting for name of business and id, we ordered by stars in descending order followed by review_count in descending order, ensuring only businesses with the highest rating from the highest number of reviews is displayed.
+When selecting for name of business and id, ordered by stars in descending order followed by review_count in descending order, ensuring only businesses with the highest rating from the highest number of reviews is displayed.
 
 ```{python eval=FALSE}
 cursor.execute('SELECT name, business_id, stars, review_count FROM yelp_business ORDER BY stars DESC, review_count DESC LIMIT 10')
@@ -201,69 +202,19 @@ cursor.execute("describe extended yelp_review")
 print(cursor.fetchall())
 ```
 
-```{python}
-cursor.execute('DESCRIBE extended yelp_user')
-print(cursor.fetchall())
+## 3.0 Choosing The Business {.tabset .tabset-pills}
+
+Packages used:
+
+```{r eval=FALSE}
+library(ggplot2)
+library(tidyverse)
 ```
 
-## 3.0 Pre-processing {.tabset .tabset-pills}
+### 3.1 Average star rating for all businesses
 
-### Business.json
+Out of all the stars rating, only nine values are possible since Yelp only displays it rounded to the nearest 0.5.
 
-When looking at businesses overall, there are 58 columns.
-
-```{python}
-cursor.execute('DESCRIBE yelp_business')
-print(cursor.fetchall())
-cursor.execute('SELECT COUNT(*) FROM yelp_business')
-print(cursor.fetchall())
-```
-
-```{python}
-cursor.execute("SELECT * FROM yelp_business LIMIT 10")
-columns = [desc[0] for desc in cursor.description]
-df = pd.DataFrame(cursor.fetchall(),columns=columns)
-df
-```
-
-Of which, 39 come from the 'attributes' object.
-```{python}
-df_attributes = df.filter(regex='^yelp_business.attributes')
-print(df_attributes.columns)
-df_attributes
-```
-
-And 7 come from 'hours'.
-```{python}
-df_attributes = df.filter(regex='^yelp_business.hour')
-print(df_attributes.columns)
-df_attributes
-```
-
-For the sake of the analysis, all irrelevant columns has to be removed. In addition, since the aim of this assignment is to make recommendations for a poorly-performing one, I only want to focus on active businesses, not businesses are closed. In addition, I want to focus on businesses that have at least 30 reviews.
-
-In Ambari Hive, I make a new View based on the original table.
-```{python eval=FALSE}
-DROP VIEW bus_view;
-
-CREATE VIEW bus_view AS
-SELECT business_id, name, review_count, stars, address, state, city, latitude, longitude
-FROM yelp_business
-WHERE is_open = 0 AND review_count >= 30;
-```
-
-So from, 150,000 businesses, only 9235 are from currently open businesses with a review count of at least 30. 
-```{python eval=FALSE}
-cursor.execute("SELECT COUNT(*) from yelp_business")
-print(cursor.fetchall()) #150246 rows
-cursor.execute("SELECT COUNT(*) from bus_view")
-print(cursor.fetchall()) #9235 rows
-```
-## 4.0 Exploratory data analysis {.tabset .tabset-pills}
-
-### Average star rating for all businesses
-
-Out of all the stars rating, only nine values are possible since Yelp only displays it rounded to the nearest 0.5. 
 ```{python}
 cursor.execute("SELECT stars, COUNT(*) AS freq, AVG(review_count) AS avg_review_count FROM yelp_business GROUP BY stars ORDER BY freq DESC")
 df = to_pd(cursor)
@@ -271,13 +222,10 @@ df
 ```
 
 Overall, there is a left skew where most businesses are rated more positively than negatively. The most common rating on average for a particular business is around 4, followed by 4.5 and 3.0. The highest rating only occurs around 10.8% of the time.
-```{r echo=FALSE}
-library(ggplot2)
-library(dplyr)
 
+```{r echo=FALSE}
 df<-reticulate::py$df
 
-# Plot the bar chart
 ggplot(df, aes(x = stars, y = freq)) +
   geom_bar(stat = "identity", fill = "darkseagreen") +
   labs(
@@ -288,10 +236,11 @@ ggplot(df, aes(x = stars, y = freq)) +
   theme_minimal()
 ```
 
-The x-axis is the rating, the left y-axis points to the frequency of the rating and the right y-axis is the average review count of a business with that rating. The green is number of businesses with that star rating and blue is average number of reviews for all businesses per star rating. 
+The x-axis is the rating, the left y-axis points to the frequency of the rating and the right y-axis is the average review count of a business with that rating. The green is number of businesses with that star rating and blue is average number of reviews for all businesses per star rating.
 
 As can be seen, it does not follow the same proportion for the frequency. The top three highest average review counts are the same as the business count, but the two lowest are 1.0 and 5.0, which shows that most businesses with either a consistently high or low rating tend to have fewer reviews. This suggests that extreme ratings are pushed forward by a small number of reviews. As in, for example, if talking about it in a generalised overview, while businesses with a high 5-star rating would typically be seen as 'better' than those rated under 5, but in actuality, taking in account the difference in average review count vs rating, it could actually signify a business that is just niche or new instead of better.
-```{r}
+
+```{r echo=FALSE}
 df<-reticulate::py$df
 ff <- max(df$freq) / max(df$avg_review_count)
 
@@ -309,113 +258,28 @@ ggplot(df, aes(x = stars)) +
   theme_minimal()
 ```
 
-
-### Distribution of review count
-```{python}
-cursor.execute("SELECT review_count, name, city, categories FROM yelp_business ORDER BY review_count DESC")
-df = to_pd(cursor)
-df
-```
-
-Looking at all businesses, it's clear the review count is heavily right-skewed. The max is 7568, while the minimum number of reviews is only 5, yet the average number of reviews for any business in this dataset is only around 45.
-```{r warning = FALSE}
-
-df<-reticulate::py$df
-
-# Plot the bar chart
-ggplot(df, aes(x = review_count)) +
-  geom_histogram(bins=50,fill = "darkorange", color = "white") +
-  geom_vline(aes(xintercept = mean(df$review_count)), colour = "blue") +
-  annotate("text",
-           x = mean(df$review_count),
-           y = 10,  # places label at the top of the plot
-           label = paste("Mean =", round(mean(df$review_count),1)),
-           vjust = 1.2, hjust = -0.2,
-           color = "blue", fontface = "bold") +
-  xlim(0, 300) +
-  labs(
-    title = "Histogram of Review Counts",
-    x = "Number of Reviews",
-    y = "Frequency"
-  ) +
-  theme_minimal()
-```
-
-Amazingly, around a third of businesses on Yelp do not even hit 10 reviews
-```{r}
-sum(df$review_count < 10)
-```
-Overall, out of all the businesses that have at least 500 reviews are mostly from the US, namely cities such as Philadelphia, New Orleans, Nashville. This could be because they are well-known tourist destinations. Since these cities attract many visitors throughout the year, it most likely leads to a higher number of customers leaving reviews for businesses (restaurants, hotels, tourist attractions, etc.). However, take note that this Yelp dataset only covers 11 metropolitan areas, which is why other popular tourism cities like New York do not appear at all.
-
-High foot traffic due to tourism and popular events (e.g., Mardi Gras in New Orleans or music festivals in Philadelphia and Nashville) could be contributing to the higher review count.
-```{r}
-df<-reticulate::py$df
-df2 <- df %>% filter(review_count > 500)
-gg<-sort(table(df2$city), decreasing = TRUE)[1:20]
-gg
-```
-
-```{r}
-ggplot(as.data.frame(gg), aes(x = reorder(Var1, -Freq), y = Freq)) +
-  geom_bar(stat = "identity") +
-  labs(
-    title = "City of Businesses with at least 500 reviews",
-    x = "City",
-    y = "Frequency"
-  ) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-```
-```{python}
-cursor.execute("SELECT ybc.business_id, ybc.category FROM yelp_business AS yb JOIN yelp_business_category AS ybc ON yb.business_id = ybc.business_id WHERE yb.city = 'New Orleans' AND yb.review_count >= 1000")
-df = to_pd(cursor)
-df
-```
-
-For those with a high review count in New Orleans, the categories associated with it is Cajun/Creole and Seafood.
-```{r echo=FALSE}
-df<-reticulate::py$df
-gg<-sort(table(df$ybc.category), decreasing = TRUE)[1:20]
-gg
-```
-```{python}
-cursor.execute("SELECT ybc.business_id, ybc.category FROM yelp_business AS yb JOIN yelp_business_category AS ybc ON yb.business_id = ybc.business_id WHERE yb.city = 'Nashville' AND yb.review_count >= 1000")
-df = to_pd(cursor)
-df
-```
-
-For those with a high review count in Nashville, the categories associated with it is similar to those in Philadelphia.
-```{r echo=FALSE}
-df<-reticulate::py$df
-gg<-sort(table(df$ybc.category), decreasing = TRUE)[1:20]
-gg
-```
-```{python}
-cursor.execute("SELECT ybc.business_id, ybc.category FROM yelp_business AS yb JOIN yelp_business_category AS ybc ON yb.business_id = ybc.business_id WHERE yb.city = 'Philadelphia' AND yb.review_count >= 1000")
-df = to_pd(cursor)
-df
-```
-
-For those with a high review count in New Orleans, the categories associated with it is Cajun/Creole and Seafood.
-```{r echo=FALSE}
-df<-reticulate::py$df
-gg<-sort(table(df$ybc.category), decreasing = TRUE)[1:20]
-gg
-```
-
-### Distribution of categories
+### 3.2 Distribution of categories
 
 Looking at the category column, there are a total of 1310 unique values this could be. These columns are not distinct per business so a single business could belong to multiple categories.
+
 ```{python}
 cursor.execute("SELECT category, COUNT(*) AS frequency FROM yelp_business_category GROUP BY category ORDER BY frequency DESC")
 df = to_pd(cursor)
+```
+
+```{r}
+
+df<-reticulate::py$df
 df
 ```
+
 ```{r}
 df<-reticulate::py$df
 mean(df$frequency) #average is 509.9863
 ```
+
 Around one third of businesses in this dataset is categorised under Restaurant, followed by businesses related to Home Services, Beauty & Spa, Nightlife and Health & Medical.
+
 ```{r}
 ggplot(df, aes(x = reorder(category, -frequency), y = frequency)) +
   geom_bar(stat = "identity") +
@@ -429,12 +293,646 @@ ggplot(df, aes(x = reorder(category, -frequency), y = frequency)) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-## 5.0 Text Mining Analysis
+### 3.3 Distribution of review count
 
+```{python}
+cursor.execute("SELECT review_count, name, city, categories FROM yelp_business ORDER BY review_count DESC")
+df = to_pd(cursor)
+```
 
+Looking at all businesses, it's clear the review count is heavily right-skewed. The max is 7568, while the minimum number of reviews is only 5, yet the average number of reviews for any business in this dataset is only around 45.
 
-### Discussion
+```{r}
 
-## 6.0 User Friendship Network Analysis
+df<-reticulate::py$df
+df
+```
 
-### Discussion
+```{r echo=FALSE}
+ggplot(df, aes(x = review_count)) +
+  geom_histogram(bins=50,fill = "darkorange", color = "white") +
+  geom_vline(aes(xintercept = mean(df$review_count)), colour = "blue") +
+  annotate("text",
+           x = mean(df$review_count),
+           y = 10,
+           label = paste("Mean =", round(mean(df$review_count),1)),
+           vjust = 1.2, hjust = -0.2,
+           color = "blue", fontface = "bold") +
+  xlim(0, 300) +
+  labs(
+    title = "Histogram of Review Counts",
+    x = "Number of Reviews",
+    y = "Frequency"
+  ) +
+  theme_minimal()
+```
+
+Amazingly, around a third of businesses on Yelp do not even hit 10 reviews
+
+```{r}
+sum(df$review_count < 10)
+```
+
+Overall, out of all the businesses that have at least 500 reviews are mostly from the US, namely cities such as Philadelphia, New Orleans, Nashville. This could be because they are well-known tourist destinations. Since these cities attract many visitors throughout the year, it most likely leads to a higher number of customers leaving reviews for businesses (restaurants, hotels, tourist attractions, etc.). However, take note that this Yelp dataset only covers 11 metropolitan areas, which is why other popular tourism cities like New York do not appear at all.
+
+High foot traffic due to tourism and popular events (e.g., Mardi Gras in New Orleans or music festivals in Philadelphia and Nashville) could be contributing to the higher review count.
+
+```{r}
+df<-reticulate::py$df
+df2 <- df %>% filter(review_count > 500)
+gg<-sort(table(df2$city), decreasing = TRUE)[1:20]
+gg
+```
+
+```{r echo=FALSE}
+ggplot(as.data.frame(gg), aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "City of Businesses with at least 500 reviews",
+    x = "City",
+    y = "Frequency"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+For New Orleans:
+
+```{python}
+cursor.execute("SELECT ybc.business_id, ybc.category FROM yelp_business AS yb JOIN yelp_business_category AS ybc ON yb.business_id = ybc.business_id WHERE yb.city = 'New Orleans' AND yb.review_count >= 1000")
+df = to_pd(cursor)
+```
+
+```{r}
+
+df<-reticulate::py$df
+df
+```
+
+For those with a high review count in New Orleans, the categories associated with it is Cajun/Creole and Seafood, that is because those two cuisines are associated with New Orleans or Louisiana in general. In addition, Cajun/Creole is seafood-based.
+
+```{r echo=FALSE}
+gg<-sort(table(df$ybc.category), decreasing = TRUE)[1:20]
+gg
+```
+
+For Nashville:
+
+```{python }
+cursor.execute("SELECT ybc.business_id, ybc.category FROM yelp_business AS yb JOIN yelp_business_category AS ybc ON yb.business_id = ybc.business_id WHERE yb.city = 'Nashville' AND yb.review_count >= 1000")
+df = to_pd(cursor)
+```
+
+```{r}
+
+df<-reticulate::py$df
+df
+```
+
+For those with a high review count in Nashville, the categories associated with it is similar to those in New Orleans with American and Southern food.
+
+```{r echo=FALSE}
+df<-reticulate::py$df
+gg<-sort(table(df$ybc.category), decreasing = TRUE)[1:20]
+gg
+```
+
+For Philadelphia:
+
+```{python}
+cursor.execute("SELECT ybc.business_id, ybc.category FROM yelp_business AS yb JOIN yelp_business_category AS ybc ON yb.business_id = ybc.business_id WHERE yb.city = 'Philadelphia' AND yb.review_count >= 1000")
+df = to_pd(cursor)
+```
+
+```{r}
+
+df<-reticulate::py$df
+df
+```
+
+For those with a high review count in Philadelphia, the categories associated with it is similar to New Orleans and Nashville, with the interesting difference being more Chinese/Asian and Italian food shops.
+
+```{r echo=FALSE}
+df<-reticulate::py$df
+gg<-sort(table(df$ybc.category), decreasing = TRUE)[1:25]
+gg
+```
+
+```{python}
+cursor.execute("SELECT * FROM yelp_business AS yb JOIN yelp_business_category AS ybc ON yb.business_id = ybc.business_id WHERE yb.business_id = 'IkY2ticzHEn4QFn8hQLSWg'")
+df = to_pd(cursor)
+```
+
+```{r}
+a<-reticulate::py$df
+```
+
+## 4.0 Text Mining Analysis {.tabset .tabset-pills}
+
+### -
+
+For the purpose of utilising text mining analysis to provide service improvements to a business, Geno's Steaks with a rating of 2.5 was chosen. Its reviews at various star ratings was examined and comments on what is causing its low rating and recommendations to how to improve it was made .
+
+Packages used: tm, textstem, tidyverse
+
+### 4.1 Pre-processing
+
+For text mining analysis, before deciding what to do, I wanted to limit it to only businesses that are currently open and have at least 25 reviews to have enough substance to analyse. An issue faced by any business is negative customer feedback; however, the ability to collect, analyse and make changes based on those negative reviews would help a business improve their quality of service. So, in Ambari Hive, I made a new table or View based on the following:
+
+```{sql eval=FALSE}
+DROP VIEW bus_view;
+
+CREATE VIEW bus_view AS
+SELECT bb.business_id, bb.name, bb.review_count, bb.stars, bb.city, bb.latitude, bb.longitude, 
+COUNT(CASE WHEN gg.stars = 1 THEN 1 END) AS count_star_1,
+COUNT(CASE WHEN gg.stars = 2 THEN 1 END) AS count_star_2,
+COUNT(CASE WHEN gg.stars = 3 THEN 1 END) AS  count_star_3,
+COUNT(CASE WHEN gg.stars = 4 THEN 1 END) AS count_star_4,
+COUNT(CASE WHEN gg.stars = 5 THEN 1 END) AS count_star_5
+FROM yelp_business bb 
+JOIN yelp_review gg ON bb.business_id = gg.business_id
+
+WHERE bb.is_open = 1 AND bb.review_count >= 25
+GROUP BY bb.business_id, bb.name, bb.review_count, bb.stars, bb.city, bb.latitude, bb.longitude;
+```
+
+Leaving 41679 businesses out of the original 150246.
+
+```{python}
+cursor.execute("SELECT COUNT(*) from yelp_business")
+print(cursor.fetchall()) #150246 rows
+cursor.execute("SELECT COUNT(*) from bus_view")
+print(cursor.fetchall()) #41679 rows
+```
+
+For picking a poorly reviewed business, since most businesses average around 3-4 stars. I was interested in picking one that had a good distribution of different ratings, high number of ratings overall, and an average rating that was 2.5. Based on this, Geno's Steaks' reviews will be analysed for this purpose.
+
+```{python}
+cursor.execute("SELECT * FROM bus_view WHERE stars = 2.5 ORDER BY review_count DESC LIMIT 10")
+df = to_pd(cursor)
+```
+
+```{r echo=FALSE}
+df<-reticulate::py$df
+df
+```
+
+Based on the various queries made in Section 3.3, there are 5 steakhouse businesses in Philadelphia for this dataset in total. In truth, there are other steakhouses in the larger Philadelphia area, however, Yelp only includes a few metropolitan areas. Apart from Geno's Steaks, the others that are categorised as 'steakhouses' are Butcher and Singer, Fogo de Chao Oyster House, Del Frisco's Double Eagle Steakhouse. All of them are rated at 4 except for Butcher and Singer which has a rating of 4.5.
+
+```{python}
+cursor.execute("SELECT * FROM yelp_business AS yb JOIN yelp_business_category AS ybc ON yb.business_id = ybc.business_id WHERE yb.city = 'Philadelphia' AND yb.review_count >= 1000 AND ybc.category = 'Steakhouses'")
+df = to_pd(cursor)
+```
+
+```{r echo=FALSE}
+df<-reticulate::py$df
+df <- df[, colSums(is.na(df)) < nrow(df)] #removed any columns that are completely NA
+df
+```
+
+Using business_id to obtain a dataframe with all the reviews.
+
+```{python}
+cursor.execute("SELECT * FROM yelp_review WHERE business_id = 'IkY2ticzHEn4QFn8hQLSWg'")
+gen_rev = to_pd(cursor)
+```
+
+For ease of use, run `read.csv("gen_rev.csv")` to get the dataset directly to avoid needing to obtain it from hadoop. There are 3490 reviews.
+
+```{r echo=FALSE}
+gen_rev<-reticulate::py$gen_rev
+gen_rev
+
+##if needed, can write and load the gen_rev.csv
+#write.csv(gen_rev,file="gen_rev,csv")
+### gen_rev<-read.csv("gen_rev.csv") ### <- Load me!
+```
+
+There are two reviews that still have the newline causing issues. Since it was just two (review_id: fRZGdiaCTbBkifuEz_klcw, ooXvho4aODoq_ffOqtuYbA), I removed them. There were also two Chinese reviews (review_id: 5IQ0ERyPZpuobdxHZAd7fA, uxRYoAM_eLWBHGPjIDkntQ) that were removed since our analysis will be using English lexicons and stopwords.
+
+```{r}
+gen_rev <- gen_rev[!((is.na(gen_rev$yelp_review.user_id)) | (gen_rev$yelp_review.review_id %in% c('5IQ0ERyPZpuobdxHZAd7fA', 'uxRYoAM_eLWBHGPjIDkntQ'))), ]
+
+gen_rev$yelp_review.date<-as.Date(gen_rev$yelp_review.date)
+
+```
+
+Next is preparing the corpus and removal of punctuation, numbers, whitespace and common stopwords. Finally, the words were lemmatized. Lemmatization uses a dictionary to reduce a word down to its root form while preserving the word's legibility. The other method of stemming is similar but more destructive so it was not opted for.
+
+```{r eval=FALSE, warning=FALSE}
+library(tm)
+library(textstem)
+docs<-Corpus(VectorSource(gen_rev$yelp_review.text))
+docs <- tm_map(docs, content_transformer(tolower))    # Convert to lowercase
+docs <- tm_map(docs, removePunctuation)         # Remove punctuation
+docs <- tm_map(docs, removeNumbers)             # Remove numbers
+docs <- tm_map(docs, removeWords, stopwords("en"))  # Remove common stopwords
+docs <- tm_map(docs, stripWhitespace)
+docs<-lemmatize_strings(docs)[1]
+docs<-unlist(stringr::str_split(docs,"[,]"))
+```
+
+### 4.2 Exploratory Data Analysis
+
+Looking at this, Geno's Steaks is far away from the other steakhouses. So, theoretically they have the advantage of being less competition. However, the location of the other steakhouses seems to be nearer to a city hall and a main transportation route while Geno's Steaks is comparatively out of the way.
+
+```{r echo=FALSE}
+library(leaflet)
+center_lat <- mean(df$yb.latitude)
+center_lon <- mean(df$yb.longitude)
+
+leaflet(df) %>%
+  addProviderTiles("OpenStreetMap") %>%  # You can change to "Esri.NatGeoWorldMap" etc.
+  addMarkers(
+    lng = ~ yb.longitude,
+    lat = ~ yb.latitude,
+    popup = ~ paste("Name:", yb.name)
+  ) %>%
+  setView(lng = center_lon, lat = center_lat, zoom = 14)
+```
+
+Aside from the month of 2019-07, the most popular period for reviews for this business occurred from around mid 2013 to late 2014. The colours correspond to the frequency, pink 0-10, orange 11-20, blue 21-30, yellow 31-40, black 41-50, red is 53.
+
+```{r echo=FALSE}
+a<-as.data.frame(table(format(gen_rev$yelp_review.date, "%Y-%m")))
+a$Freq_Range <- cut(a$Freq, 
+                    breaks = seq(0, 60, by = 10),  
+                    include.lowest = TRUE,         
+                    labels = c("pink", "lightsalmon", "cadetblue3", "yellow", "black","red"))
+ggplot(a, aes(x = Var1, y=Freq)) +
+  geom_bar(stat = "identity", fill = a$Freq_Range) +
+  labs(x = "Year-Month", y = "Count", title = "Frequency of Reviews Per Month") +
+  theme_minimal() +
+  scale_x_discrete(breaks = a$Var1[seq(1, nrow(a), by = 2)])+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+```{r echo=FALSE}
+ggplot(as.data.frame(table(gen_rev$yelp_review.stars)), aes(x = Var1, y=Freq)) +
+  geom_bar(stat = "identity", fill=1:5) +
+  labs(x = "Star Rating", y = "Count", title = "Frequency of Star Rating") +
+  geom_text(aes(label = Freq), vjust = -0.5) +
+  theme_minimal()
+```
+
+5-star reviews have always lagged behind the others, growing at a consistent rate. However, on the other hand, during the rush of reviews during 2013-2014 mentioned before, the rates of other star ratings went up with 1-star ratings going slightly more up compared to 2, 3, 4 rating.
+
+```{r}
+df_cumsum <- gen_rev %>% mutate(review_month = format(gen_rev$yelp_review.date, "%Y-%m")) %>%
+  count(review_month,yelp_review.stars) %>%
+  pivot_wider(names_from = yelp_review.stars, values_from = n, values_fill = 0, names_prefix = "star_") %>%
+  arrange(review_month) %>%
+  mutate(across(starts_with("star_"), cumsum)) %>%
+  pivot_longer(cols = starts_with("star_"),
+               names_to = "star",
+               names_prefix = "star_",
+               values_to = "cum_count")%>% ungroup() %>% group_by(star) %>%
+  mutate(star = factor(star), percent_cum = 100 * (cum_count / max(cum_count)))
+
+#Cumulative sum of stra rating
+ggplot(df_cumsum, aes(x = review_month, y = cum_count,color = star, group = star)) +
+  geom_line(size = 1) +
+  labs(
+    title = "Cumulative Sum of Star Ratings Over Time",
+    x = "Date",
+    y = "Cumulative Count",
+    color = "Star Rating"
+  ) +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal()
+
+#Percentage cumulative
+ggplot(df_cumsum, aes(x = review_month, y = percent_cum,color = star, group = star)) +
+  geom_line(size = 1) +
+  labs(
+    title = "Cumulative Sum of Star Ratings Over Time",
+    x = "Date",
+    y = "Cumulative Count",
+    color = "Star Rating"
+  ) +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal()
+```
+
+### 4.3 Analysis: Word Frequencies / Word Association
+
+A Document-Term Matrix (DTM) is a table that represents the frequency of terms or words in our collection of reviews. Based on the DTM, there are 9022 unique words.
+
+```{r}
+dtm<-DocumentTermMatrix(docs)
+dtm_df<-data.frame(cbind(as.matrix(dtm),gen_rev$yelp_review.stars))
+names(dtm_df)[9023]<-"stars_rating"
+dtm_df$stars_rating<-as.integer(dtm_df$stars_rating)
+
+library(tidyverse)
+#Frequency of words per star rating
+d<-dtm_df %>% group_by(stars_rating) %>% summarise(across(everything(),sum)) %>% pivot_longer(cols = -stars_rating, names_to="term",values_to="freq") 
+
+#Frequency of words overall
+dtm_sum<- data.frame(names(colSums(as.matrix(dtm))),colSums(as.matrix(dtm)))
+names(dtm_sum)<-c("term","freq")
+```
+
+#### Term Frequency
+
+Across all documents, below are the most common words as in they appear in the most number of documents. Those words are good, genos (referring to the name of the business), pat (apparently a rival business), words related to the food on the menu including 'whiz', a processed cheese sauce for Philly cheesesteak, and philly (short for Philadelphia).
+
+```{r}
+dtm_sum %>% arrange(desc(freq)) %>% head(30) %>% 
+  ggplot(aes(x=freq, y=reorder(term,freq))) +
+  geom_bar(stat="identity") +
+  labs(
+    title="Most frequent terms",
+    y="Term",
+    x="Frequency"
+  )
+
+```
+
+#### Wordcloud
+
+For words with a frequency of at least 200, the key words are most related to food or cooking terms (fry, provolone, onion), or the location (Philly), although there are less nicer words like 'bad', 'bland', 'rude', 'disappoint', and 'trap'.
+
+```{r}
+library(wordcloud2)
+wordcloud2(dtm_sum[dtm_sum$freq >=200,],size=0.7,shape="diamond",shuffle = FALSE)
+```
+
+In order to capture the 'unique' words within a particular star rating, the percent frequency was calculated where the word has appeared at least 30 times over all reviews. Therefore, if a word has a higher frequency in 1-star reviews compared to other star reviews, it will have a higher proportion. For example, the word 'disgust' appears in 1-star reviews 88% percent of the time, making it more unique to that. Apart from negative descriptor words, other words that appear include xenophobic, tasteless, overpriced, rubbery, racist, racism, rude, flavorless, immigrant, stale.
+
+```{r warning=FALSE}
+library(wordcloud)
+d2 <- d %>% group_by(term) %>% 
+  mutate(total = sum(freq)) %>% 
+  mutate(percent_freq = round((freq/total)*100)) %>% 
+     filter(total>=30) %>% slice_max(percent_freq, n = 1, with_ties = FALSE) %>% ungroup() %>% arrange(desc(percent_freq))
+d3 <- d2 %>% filter(stars_rating == 1) %>% slice_head(n = 50)
+wordcloud(
+  words = d3$term,
+  freq = d3$percent_freq,
+  min.freq = 1,
+  scale = c(2, 0.5),
+  colors = colorRampPalette(brewer.pal(10, "Spectral"))(length(d3$term)),
+  ordered.colors = T,
+  random.order = FALSE,
+  rot.per = 0.25
+)
+```
+
+Moving to the 2-star reviews, additional problems are being complained about. Neon lights and food that is grease-y, cheap or soggy appear here. The word 'toast' comes from feedback about upsettingly untoasted bread.
+
+```{r}
+d3 <- d2 %>% filter(stars_rating == 2) %>% slice_head(n = 50)
+wordcloud(
+  words = d3$term,
+  freq = d3$percent_freq,
+  min.freq = 1,
+  scale = c(1.5, 0.5),
+  colors = colorRampPalette(brewer.pal(10, "Spectral"))(length(d3$term)),
+  ordered.colors = T,
+  random.order = FALSE,
+  rot.per = 0.25
+)
+```
+
+For 3-star ratings, words that are predominantly in it are becoming more neutral.
+
+```{r}
+d3 <- d2 %>% filter(stars_rating == 3) %>% slice_head(n = 50)
+wordcloud(
+  words = d3$term,
+  freq = d3$percent_freq,
+  min.freq = 1,
+  scale = c(1.5, 0.5),
+  colors = colorRampPalette(brewer.pal(10, "Spectral"))(length(d3$term)),
+  ordered.colors = T,
+  random.order = FALSE,
+  rot.per = 0.25
+)
+```
+
+While it may be lacking in some respects, those who enjoyed their time in Genos' Steaks' food is tender and a classic. The word 'friendly' also appears here.
+
+```{r}
+d3 <- d2 %>% filter(stars_rating == 4) %>% slice_head(n = 50)
+wordcloud(
+  words = d3$term,
+  freq = d3$percent_freq,
+  min.freq = 1,
+  scale = c(1.5, 0.5),
+  colors = colorRampPalette(brewer.pal(10, "Spectral"))(length(d3$term)),
+  ordered.colors = T,
+  random.order = FALSE,
+  rot.per = 0.25
+)
+```
+
+For 5-star reviews, only 3 words are at 32, 30, and 26% out of the other star ratings appear. Which means there isn't any term that is particularly unique in a 5 star rating that isn't already appearing in a 4 star review or elsewhere.
+
+```{r}
+d3 <- d2 %>% filter(stars_rating == 5) %>% slice_head(n = 50)
+wordcloud(
+  words = d3$term,
+  freq = d3$percent_freq,
+  min.freq = 1,
+  scale = c(10, 0),
+  colors = colorRampPalette(brewer.pal(10, "Spectral"))(length(d3$term)),
+  ordered.colors = T,
+  random.order = FALSE,
+  rot.per = 0.25
+)
+```
+
+#### Word Correlations
+
+As can be seen below, the top three words are heavily associated with each other, with even 'geno' appearing in reviews often only when 'pat' is there too, most likely as a way to refer and differentiate them. While 'genos' is more or less associated with food items, the word 'pat' is often appears in reviews together with words like 'compare', 'comparison', 'either', 'difference', 'prefer', 'decide', which tracks with how it is often brought up in reviews as something reviewers measure Geno's Steaks to.
+
+```{r}
+
+findAssocs(dtm,"good",0.2)
+findAssocs(dtm,"genos",0.2)
+findAssocs(dtm,"pat",0.2)
+```
+
+Compared to the top 3 words, many of the negative words aren't as heavily associated with another word, with those at a correlation limit of around 0.1 to 0.2 usually only matching one or two reviews. For words like 'bad', 'rude', and 'disappoint', it means those words are used generally. Exceptions are the word 'trap' with the word 'tourist', referring to the phrase 'tourist trap' to describe it. For 'racist' and 'offensive', both are associated with the word 'sign'. The word 'sign' itself is also heavily associated with 'english', 'speak', 'america'.
+
+```{r}
+
+findAssocs(dtm,"bad",0.15)
+findAssocs(dtm,"disappoint",0.15)
+findAssocs(dtm,"rude",0.15)
+findAssocs(dtm,"trap",0.15)
+findAssocs(dtm,"offensive",0.20)
+findAssocs(dtm,"racist",0.20)
+findAssocs(dtm,"sign",0.25)
+```
+
+Unfortunately, specific words that could be associated with the food items could not be drawn. Many of these scores from just one review.
+
+```{r}
+findAssocs(dtm,"onion",0.25)
+findAssocs(dtm,"bread",0.2)
+findAssocs(dtm,"toast",0.2)
+findAssocs(dtm,"provolone",0.25)
+findAssocs(dtm,"cheesesteak",0.25)
+findAssocs(dtm,"steak",0.25)
+findAssocs(dtm,"whiz",0.25)
+findAssocs(dtm,"flour",0.25)
+```
+
+#### Bigram Network
+
+Bigrams are words that are next to each other in the text. However, in this case, the text has been processed and its stopwords removed, some of these 'bigrams' are not actually next to each other in the original text, e.g. the bigram 'bread meat' may have originally been 'bread and meat'. When filtering for word pairs that appeared at least 50 times, there are some phrases in here that pop up regularly in the reviews, phrases such as 'food network' (referring to a TV show), 'waste' which regularly occurs next to '(of) time' and '(of) money', 'tourist trap', 'tony luke' (another restaurant namedropped in reviews), 'wait line long', 'nothing special', 'speak english'.
+
+Compared to the term frequency, using bigrams to analyse Yelp reviews for Genos seems to accrue more meaningful keyword expressions at a glance. Interestingly, a lot of the bigrams are to do with complaints when ignoring the common words like the food and location names. Reviewers seem to feel like Geno's Steak is a tourist trap that is nothing special, or even worse, a waste of time since you might have to wait in line for a long time. It also highlights one major source of how people hear about this restaurant through the TV food network show.
+
+```{r}
+library(tidytext)
+processed_text<- data.frame(text = docs, stringsAsFactors = FALSE)
+gen_word_pairs_ori <- processed_text %>%
+  unnest_tokens(bigram,text,token = "ngrams", n = 2) %>%
+  count(bigram, sort = TRUE) %>% separate(bigram, c("word1", "word2"), sep = " ")
+gen_word_pairs_ori
+```
+
+```{r}
+library(igraph)
+library(ggraph)
+gen_word_pairs_ori %>% 
+  filter(n >= 50) %>% 
+  graph_from_data_frame() %>%
+  ggraph(layout = "kk") +
+  geom_edge_link(aes(edge_alpha = n, edge_width = n),  edge_colour = "tomato") +
+  geom_node_point(size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE, 
+                 point.padding = unit(0.2, "lines")) +
+  theme_void()
+```
+
+After removing six frequent terms, the network redrawn's nodes are more visible, letting me lower the filter. Some were already apparent in the previous network like 'spin dry', a cooking technique. Other than that, typical common phrases like 'pretty much', 'wasn't bad', 'french fry', 'taste test', 'neon light', 'hot sauce', 'outdoor seat', 'somewhere else', 'fast service', 'lack flavour'. Other bigrams that are readily apparent to understanding include 'joey vento', the owner of Geno's.
+
+```{r}
+common_words<-c("cheese","steak","genos","pat","cheesesteak","good")
+gen_word_pairs <- processed_text %>%
+  unnest_tokens(bigram,text,token = "ngrams", n = 2) %>% 
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  filter(!word1 %in% common_words,
+         !word2 %in% common_words) %>%
+  unite(bigram, word1, word2, sep = " ") %>%
+  count(bigram, sort = TRUE) %>% separate(bigram, c("word1", "word2"), sep = " ")
+gen_word_pairs %>% 
+  filter(n >= 30) %>% #change this
+  graph_from_data_frame() %>%
+  ggraph(layout = "kk") +
+  geom_edge_link(aes(edge_alpha = n, edge_width = n),  edge_colour = "tomato") +
+  geom_node_point(size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE, 
+                 point.padding = unit(0.2, "lines")) +
+  theme_void()
+```
+
+### 4.4 Analysis: Sentiment Analysis
+
+#### Pre-processing
+
+Bing is a lexicon scoring words either -1 for negative or 1 for positive. AFINN is a lexicon of words scored between -5 to 5. NRC is a lexicon that categorises words as positive or negative. It also has words categorised as either The overall score for each is by finding the total sum of all the words in a document or in a review in this case.
+
+```{r}
+library(syuzhet)
+sen<-as.data.frame(cbind(gen_rev, syuzhet = get_sentiment(docs, method="syuzhet"), bing = get_sentiment(docs, method="bing"),
+                   afinn = get_sentiment(docs, method="afinn"),
+                   nrc = get_sentiment(docs, method="nrc"),get_nrc_sentiment(docs)))
+sen<- sen %>% select(-c(yelp_review.business_id, X))
+```
+
+#### Exploratory data analysis
+
+All of them are distributed around the same range. Any slight differences depends on how prolific each sentiment method's dictionary of words is and their scoring scale. For example, AFINN is between -5 to 5 so its x-axis has a much wider range compared to a smaller scoring scale like Bing's.
+
+```{r}
+sen %>%
+  pivot_longer(cols = c("syuzhet","bing", "afinn", "nrc"), names_to = "method", values_to = "score") %>%
+  ggplot(aes(x = score, fill = method)) +
+  geom_histogram(binwidth = 1, alpha = 0.7, position = "identity") +
+  facet_wrap(~ method, scales = "free") +
+  theme_minimal() +
+  labs(title = "Distribution of Sentiment Scores", x = "Sentiment Score", y = "Frequency")
+```
+
+#### Emotions Per Star Rating
+
+Below is a radar chart which shows the variation per star rating for each of the emotions. Red, orange, blue, yellow, purple correspond to 1-, 2-, 3-, 4-, and 5-star ratings respectively. The scales are normalized by binding it in between each rating's maximum value so it can be directly plotted and shown on the same radar chart. Each polygon represents the relative emotion score per star rating. The largest difference is between 1-star reviews and then 3-, 4-, 5-star reviews. For the negative emotions, 1 has comparativly higher numbers of words related to disgust, anger, fear and sadness compared to 3, 4, 5, while 2 is approximately the midpoint. Positive emotions for 3, 4, 5, don't look too dissimilar.
+
+```{r  warning=FALSE}
+library(fmsb)
+emo_per_star <- sen %>%
+  group_by(yelp_review.stars) %>%
+  summarise(across(c(anger, disgust, fear, sadness, joy, surprise, anticipation, trust), sum, .names = "{.col}")) %>% rowwise() %>%
+  mutate(total = sum(c_across(anger:trust))) %>%
+  mutate(across(anger:trust, ~ .x / total * 100)) %>%
+  ungroup() %>%
+  select(-total) %>%
+  arrange(yelp_review.stars)
+rr <- rbind(rep(25,8), rep(0, 8), emo_per_star[,-1])
+rownames(rr) <- c("Max", "Min", paste0("Star ", emo_per_star$yelp_review.stars))
+
+radarchart(
+  rr,
+  axistype = 1,
+  pcol =  c("red", "orange", "darkslategray1","yellow", "purple"),
+  pfcol = adjustcolor( c("red", "orange", "darkslategray1","yellow", "purple"), alpha.f = 0.2),
+  plwd = 2,
+  plty = 1,
+  cglcol = "grey",
+  cglty = 1,
+  axislabcol = "grey",
+  vlcex = 0.9,
+  title = "Emotions by Star Rating"
+)
+```
+
+#### Time Series of Average Sentiment over Time
+
+```{r}
+{r echo=FALSE}
+sen %>% mutate(review_month = format(gen_rev$yelp_review.date, "%Y-%m")) %>%
+  group_by(review_month) %>%
+    summarise(
+    avg_star = mean(yelp_review.stars, na.rm = TRUE),
+    review_count = n()
+  ) %>%
+  ggplot(aes(x = review_month, y = avg_star, group = 1)) +
+  geom_line() +
+   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(title = "Average Rating Per Month Over Time", x = "Date", y = "Mean Rating")
+```
+
+## 5.0 Discussion and Recommendations
+
+The Yelp dataset is a massive file with the review.json being 5GB by itself; this makes it extremely difficult or limiting to handle in a software like R which defaults to handling objects in its environment in RAM. This is one of the reasons what makes Yelp a suitable dataset to have to load into a Hadoop ecosystem. In this assignment, putting it in Hive lets us easily query and subset the tables we need directly.
+
+After looking at the dataset overall using SQL to query various characteristics, Geno's Steaks was zeroed in on due to its very low rating compared to the similar Philadelphian steakhouse restaurants in the same area despite having very high number of reviews. This makes it a welcome candidate to text analysis to process and handle it. Overall, text mining analysis can be an effective way to process and visualise thousands of lines of text in an informative way, limiting the need for manual reading and examination. of all reviews. In addition, it allows quantitatively words against each other for comparison.
+
+For pinpointing reviews that mention or identify areas of improvement, using a mix of different techniques of text analysis helps provide a fuller image. Techniques done in this small assignment was term frequency, word pairs, word correlations that could help find keywords.
+
+Term frequency lets us see and compare what terms appear frequently across all the reviews. Looking at it overall, most of the common words was related to the business or to the food items; it wasn't very helpful for the objective of finding areas of improvement. However, once it was narrowed to term frequencies per star rating, a clearer picture began to form. Initially, I hoped to find unique words for 5-star ratings as feedback for what the business should continue doing, however, there was none. The most common words for 5-star reviews were the most common words in general. Conversely, the lower-star ratings, especially the 1-star reviews had cited issues such as 'rubbery' meat, 'stale' and 'tasteless' food. The most significant issue and the most prominent complaint for this business is related to perceived discriminatory, xenophobic messaging, namely, a hotly mentioned issue is a sign to the tone of, paraphrased, 'To speak english, this is America'. If the business is ever concerned about improving its rating on Yelp, resolving that would be key. Apart from the usual improvement that could be made to any food place like better food quality, and customer service, another minor issue is the glaring neon lights. Overall, using term frequency was a very effective way to narrow down keywords related to customer grievances; however, the issue with using term frequency is that it removes all context. If a word such as 'friendly' pops up a lot, it would be initially difficult to determine if that is meant to be a good thing or a bad thing (e.g. 'not friendly'). Both 'friendly' and 'not friendly' would count towards the same. Another example is the word 'trash' appearing in the 1-star rating wordcloud. At first glance, it could be a complaint about a messy restaurant, but 'trash' can also appear as an adjective ('this is trash') or a verb ('my friends always trash this place to me'), so finding the original review is paramount. Finally, wordcloud was used to colourfully communicate the frequency using size and colour to denote it, however its output can be variable. Based on that, it's a nice overview, but not good for strict conveyance of data.
+
+Talking about context, word associations or word correlations examine statistical relationships between words in a document. Words that appear together frequently are said to have high correlation. While great in theory, using in this context was difficult and many of the correlations simply came from just one or two review mentioning together. Some words would have the same level of correlation but differ in the number of reviews that actually mention them together, so it impossible to directly tell how many evidence there is. Also, in general, most of the associations were very, very weak. Making recommendations for improvement based on word correlations is of limited use. However, word associations highlighted an intense rivalry between two steakhouses with many of the reviews driven to comparing the two. In addition, using word correlations together with term frequency allowed me identify the existence of the restaurant's signage that fueled the unique words in the 1-star wordcloud.
+
+Bigrams is similar to term frequency except instead of counting frequency of just one word, it counts up the frequencies of pairs of words. It provides slightly more context. Using this and adjusting the bigram network, re-occuring words that appear adjacent to each other as appear as a pattern. Projecting this method to a network graph allows connections between words to be clearly illustrated like how common words 'line' is connected to 'wait', 'and', 'move', 'long', 'wait', but the 'wait' is 'worth' it which is also connected to 'definitely' (not seen here). Compared to word associations, bigrams better capture a local space, but it also means there is some superfluous bigrams that reflect the english language's phrasing rather than something something specific to the dataset. Recommendations based on bigrams aren't many, in fact, this is the only method that finally drew some positive feedback which is that they have 'fast service'.
+
+![](images/clipboard-2777165364.png)
+
+Recommendations to further improve insight into this include doing sentiment analysis beyond just profiling the emotions associated a certain rating.
+
+### Literature
+
+When comparing wordclouds, many of the words in the 1-star wordcloud and the general overall wordcloud match the top 20 negative words in Las Vegas, Nevada; words such as overpriced, soggy, rude, grease, and bland [@wang2015] but at least Geno's Steaks isn't associated with 'closed' or 'dirty' or 'slow', or 'overcooked' (based the negative word clouds for Charlotte and Pittsburgh.
+
+In other locations, 5-star reviews for quick server restaurants would be related to the cleanliness of the business or the how friendly the staff have been [@gadidov2018]. While there are some reviews in our dataset mentioning that, it's not a major theme. For staff, some reviews for Geno's Steaks mention friendliness and some are more mixed or even stated to be downright rude.
+
+Another paper that looks into also corroborates that the average review for a user is very low, the majority being under 5 reviews. This could be a factor why the average number of business is very low, most people do not think to review every place they go to and only certain circumstances like providing negative feedback may be driving them to comment. For their wordcloud, it is for Gordon Ramsey's BurGR. Their positive wordcloud has terms related to the food items and positive descriptors; the negative wordcloud has words like 'waste', 'raw', 'nobody' [@alamoudi2021]. In general, very similar to the term frequencies for Genos' Steaks 1-star and 5-star.
+
+## References
+
+[@yelp; @gadidov2018; @alamoudi2021; @wang2015]

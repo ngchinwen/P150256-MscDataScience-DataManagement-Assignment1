@@ -1,0 +1,111 @@
+[
+    {
+        "URL": "https://api.semanticscholar.org/CorpusID:41546427",
+        "author": [
+            {
+                "family": "Wang",
+                "given": "Mingshan"
+            },
+            {
+                "family": "Qiu",
+                "given": "Rui"
+            }
+        ],
+        "id": "wang2015",
+        "issued": {
+            "date-parts": [
+                [
+                    2015
+                ]
+            ]
+        },
+        "key": "QMW3EX2K",
+        "libraryid": "1",
+        "providerkey": "2509FBBE-5BB0-44C4-B119-6083A81ED673",
+        "title": "Text Mining for Yelp Dataset Challenge",
+        "type": "paper-conference"
+    },
+    {
+        "DOI": "10.1007/978-3-319-53817-4_19",
+        "ISBN": "978-3-319-53817-4",
+        "URL": "https://doi.org/10.1007/978-3-319-53817-4_19",
+        "author": [
+            {
+                "family": "Gadidov",
+                "given": "Bogdan"
+            },
+            {
+                "family": "Priestley",
+                "given": "Jennifer Lewis"
+            }
+        ],
+        "container-title": "Guide to Big Data Applications",
+        "editor": [
+            {
+                "family": "Srinivasan",
+                "given": "S."
+            }
+        ],
+        "id": "gadidov2018",
+        "issued": {
+            "date-parts": [
+                [
+                    2018
+                ]
+            ]
+        },
+        "key": "SH8GAFT2",
+        "libraryid": "1",
+        "page": "503-522",
+        "providerkey": "2509FBBE-5BB0-44C4-B119-6083A81ED673",
+        "publisher": "Springer International Publishing",
+        "publisher-place": "Cham",
+        "title": "Does Yelp Matter? Analyzing (And Guide to Using) Ratings for a Quick Serve Restaurant Chain",
+        "type": "chapter"
+    },
+    {
+        "DOI": "10.1109/NCCC49330.2021.9428850",
+        "author": [
+            {
+                "family": "Alamoudi",
+                "given": "Eman"
+            },
+            {
+                "family": "Al Azwari",
+                "given": "Sana"
+            }
+        ],
+        "id": "alamoudi2021",
+        "issued": {
+            "date-parts": [
+                [
+                    2021,
+                    3
+                ]
+            ]
+        },
+        "key": "MXG6GBK8",
+        "libraryid": "1",
+        "page": "1-6",
+        "providerkey": "2509FBBE-5BB0-44C4-B119-6083A81ED673",
+        "title": "Exploratory Data Analysis and Data Mining on Yelp Restaurant Review",
+        "type": "paper-conference"
+    },
+    {
+        "URL": "https://business.yelp.com/data/resources/open-dataset/",
+        "abstractnote": "The Yelp Open Dataset is a subset of Yelp data intended for educational use. It provides real-world business data, like reviews, photos, check-ins, and attributes.",
+        "accessdate": "2025-05-17 18:01:22",
+        "author": [
+            {
+                "family": "Yelp"
+            }
+        ],
+        "id": "yelp",
+        "key": "2WGE5L7W",
+        "language": "en-US",
+        "libraryid": "1",
+        "providerkey": "2509FBBE-5BB0-44C4-B119-6083A81ED673",
+        "title": "Yelp Open Dataset",
+        "type": "dataset"
+    }
+]
