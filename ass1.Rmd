@@ -16,8 +16,6 @@ options(knitr.kable.NA = "NA",
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 ```
 
-#  {.tabset}
-
 ## 1. Introduction {.tabset .tabset-pills}
 
 ### -
@@ -146,7 +144,7 @@ df_review.write.mode("overwrite").saveAsTable("yelp_review")
 For my specific case, since I had made a conda environment made to the hadoop framework, the conda environment within R also has to be set to that.
 
 ```{r}
-reticulate::use_condaenv(condaenv ="C:/ProgramData/anaconda3/envs/ukm_stqd6324",required = TRUE)
+reticulate::use_condaenv(condaenv = "C:\\Users\\PC05\\anaconda3\\envs\\ukm_stqd6324",required = TRUE)
 ```
 
 Then after that, comes importing all the libraries, setting up a connection can be made via python for Hive querying and R for any further pre-processing and visualisation. Overall, after the data has been properly converted to JSON to Hive table, the flow of the data is Apache Hive -\> Python -\> R.
@@ -546,6 +544,7 @@ leaflet(df) %>%
   setView(lng = center_lon, lat = center_lat, zoom = 14)
 ```
 
+![](images\clipboard-2069772887.png)
 
 Aside from the month of 2019-07, the most popular period for reviews for this business occurred from around mid 2013 to late 2014. The colours correspond to the frequency, pink 0-10, orange 11-20, blue 21-30, yellow 31-40, black 41-50, red is 53.
 
@@ -655,6 +654,7 @@ library(wordcloud2)
 wordcloud2(dtm_sum[dtm_sum$freq >=200,],size=0.7,shape="diamond",shuffle = FALSE)
 ```
 
+![](images\clipboard-3081349358.png)
 
 In order to capture the 'unique' words within a particular star rating, the percent frequency was calculated where the word has appeared at least 30 times over all reviews. Therefore, if a word has a higher frequency in 1-star reviews compared to other star reviews, it will have a higher proportion. For example, the word 'disgust' appears in 1-star reviews 88% percent of the time, making it more unique to that. Apart from negative descriptor words, other words that appear include xenophobic, tasteless, overpriced, rubbery, racist, racism, rude, flavorless, immigrant, stale.
 
