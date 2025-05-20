@@ -23,8 +23,6 @@ df.write.mode("overwrite").saveAsTable("yelp_business")
 df_biz=df.select(flatten(df.schema))
 df_biz.write.mode("overwrite").saveAsTable("yelp_business")
 
-#df_categories = df.select("business_id", explode(split(col("categories"), ",")).alias("category")).withColumn("category", trim(col("category")))
+df_categories = df.select("business_id", explode(split(col("categories"), ",")).alias("category")).withColumn("category", trim(col("category")))
 
-#df_categories.write.mode("overwrite").saveAsTable("yelp_business_category")
-
-df = df.drop("category", "attributes", "hours")
+df_categories.write.mode("overwrite").saveAsTable("yelp_business_category")
