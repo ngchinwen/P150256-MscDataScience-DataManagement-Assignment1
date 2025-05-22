@@ -113,7 +113,7 @@ df = spark.read.json("C:/Users/Documents/a_ncw/2manage/yelp_academic_dataset_use
 df.write.mode("overwrite").saveAsTable("yelp_user")
 ```
 
-For business.json, since it has some struct data types.
+For business.json, since it has some struct data types, expanding it out was needed in case it would be necessary for analysis later. The business.json also had a comma-separated list of categories that a business belongs to. Each category per business was split into their own row and put into a new table. This python code was saved under `biz2.py`.
 
 ``` sql
 ## To be run in the Virtual Machine
@@ -138,18 +138,25 @@ def flatten(schema,prefix=None):
             fields.append(name)
     return fields
 df.write.mode("overwrite").saveAsTable("yelp_business")
+
+df_biz=df.select(flatten(df.schema))
+df_biz.write.mode("overwrite").saveAsTable("yelp_business")
+
+df_categories = df.select("business_id", explode(split(col("categories"), ",")).alias("category")).withColumn("category", trim(col("category")))
+
+df_categories.write.mode("overwrite").saveAsTable("yelp_business_category")
 ```
 
 ![](images/clipboard-1278720422.png)
 
 Another example of checkin’s schema when turning the checkin json to a
-hive table. ![](images/clipboard-3799294681.png)
+hive table, although it was not used in the end. ![](images/clipboard-3799294681.png)
 
 However, the JSON file for yelp_reviews’ text file kept overflowing into
 business_id or returning back blank. After reading around, \n newline
 for Hive causes it to split it into a new line. Thus, to avoid this, all
 in the text column for review.json was replaced by a space before it was
-converted to a Hive table.
+converted to a Hive table. This was saved as `jsonToHive_yelpreviews.py`.
 
 ``` sql
 ## To be run in the Virtual Machine
@@ -247,16 +254,6 @@ Packages used:
 library(ggplot2)
 library(tidyverse)
 ```
-
-    ## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-    ## ✔ dplyr     1.1.4     ✔ readr     2.1.5
-    ## ✔ forcats   1.0.0     ✔ stringr   1.5.1
-    ## ✔ lubridate 1.9.3     ✔ tibble    3.2.1
-    ## ✔ purrr     1.0.2     ✔ tidyr     1.3.1
-    ## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
-    ## ✖ dplyr::filter() masks stats::filter()
-    ## ✖ dplyr::lag()    masks stats::lag()
-    ## ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
 
 ### 3.1 Average star rating for all businesses
 
