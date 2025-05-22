@@ -784,10 +784,7 @@ However, the location of the other steakhouses seems to be nearer to a
 city hall and a main transportation route while Geno’s Steaks is
 comparatively out of the way.
 
-<div class="leaflet html-widget html-fill-item" id="htmlwidget-45b0c3f8bcdad5975bff" style="width:672px;height:480px;"></div>
-<script type="application/json" data-for="htmlwidget-45b0c3f8bcdad5975bff">{"x":{"options":{"crs":{"crsClass":"L.CRS.EPSG3857","code":null,"proj4def":null,"projectedBounds":null,"options":{}}},"calls":[{"method":"addProviderTiles","args":["OpenStreetMap",null,null,{"errorTileUrl":"","noWrap":false,"detectRetina":false}]},{"method":"addMarkers","args":[[39.9493338,39.9509166,39.933836785,39.9502216,39.9509564],[-75.1661758,-75.16297109999999,-75.15881375239999,-75.16655299999999,-75.16545910000001],null,null,null,{"interactive":true,"draggable":false,"keyboard":true,"title":"","alt":"","zIndexOffset":0,"opacity":1,"riseOnHover":false,"riseOffset":250},["Name: Butcher and Singer","Name: Fogo de Chao","Name: Geno's Steaks","Name: Oyster House","Name: Del Frisco's Double Eagle Steakhouse"],null,null,null,null,{"interactive":false,"permanent":false,"direction":"auto","opacity":1,"offset":[0,0],"textsize":"10px","textOnly":false,"className":"","sticky":true},null]}],"limits":{"lat":[39.933836785,39.9509564],"lng":[-75.16655299999999,-75.15881375239999]},"setView":[[39.947053037,-75.16399455048],14,[]]},"evals":[],"jsHooks":[]}</script>
-
-![](images\clipboard-2069772887.png)
+![](images/clipboard-2069772887.png)<!-- -->
 
 Aside from the month of 2019-07, the most popular period for reviews for
 this business occurred from around mid 2013 to late 2014. The colours
@@ -902,10 +899,7 @@ library(wordcloud2)
 wordcloud2(dtm_sum[dtm_sum$freq >=200,],size=0.7,shape="diamond",shuffle = FALSE)
 ```
 
-<div class="wordcloud2 html-widget html-fill-item" id="htmlwidget-67744698523e9f612356" style="width:672px;height:480px;"></div>
-<script type="application/json" data-for="htmlwidget-67744698523e9f612356">{"x":{"word":["ask","big","bite","bread","cheese","cheesesteak","cheesesteaks","come","compare","definitely","feel","genos","good","just","know","like","little","local","look","make","meat","much","next","one","order","overall","pat","philly","place","put","really","right","sandwich","see","spin-dry","taste","thing","time","try","wasnt","city","didnt","disappoint","eat","expect","experience","find","flavor","line","park","price","steak","tourist","will","fry","bland","cash","food","get","long","now","people","review","seem","still","think","wait","want","way","worth","many","thats","also","another","around","can","customer","drink","fast","great","love","may","nothing","onion","star","stop","sure","take","wit","across","light","street","youre","give","hot","hype","ive","bad","guy","real","rude","decide","friend","never","roll","since","tell","visit","window","wiz","american","back","provolone","whiz","jims","okay","quality","south","even","side","spot","actually","nice","service","two","say","trip","famous","lot","pretty","year","cant","slice","always","though","chop","day","first","philadelphia","english","sign","speak","enjoy","trap","ever","pepper","money","use","enough","recommend","need"],"freq":[231,226,452,977,2570,2290,749,817,205,358,325,3653,4142,1372,668,1607,595,226,450,924,1433,587,271,1288,1399,208,3077,2170,2026,214,714,352,1606,494,331,864,444,834,1239,470,244,440,286,885,230,458,374,470,881,249,220,2831,671,536,925,224,327,901,1876,454,229,581,342,265,324,688,311,710,583,349,258,254,505,234,294,665,209,284,233,524,373,223,249,998,355,268,278,613,335,543,227,718,319,565,290,299,485,581,231,218,260,296,310,347,258,259,285,401,402,501,228,497,359,790,207,327,202,259,603,229,242,216,239,482,421,954,220,214,262,343,232,215,301,226,291,229,293,612,387,370,366,279,206,232,320,261,221,215,207,204,204],"fontFamily":"Segoe UI","fontWeight":"bold","color":"random-dark","minSize":0,"weightFactor":0.03042008691453404,"backgroundColor":"white","gridSize":0,"minRotation":-0.7853981633974483,"maxRotation":0.7853981633974483,"shuffle":false,"rotateRatio":0.4,"shape":"diamond","ellipticity":0.65,"figBase64":null,"hover":null},"evals":[],"jsHooks":{"render":[{"code":"function(el,x){\n                        console.log(123);\n                        if(!iii){\n                          window.location.reload();\n                          iii = False;\n\n                        }\n  }","data":null}]}}</script>
-
-![](images\clipboard-3081349358.png)
+![](images/clipboard-3081349358.png)<!-- -->
 
 In order to capture the ‘unique’ words within a particular star rating,
 the percent frequency was calculated where the word has appeared at
