@@ -223,14 +223,14 @@ print(cursor.fetchall())
 
 #### Example of querying
 
-This is the extended description for yelp_business.
+This is the description for yelp_business.
 
 ``` python
 cursor.execute('DESCRIBE yelp_business')
 print(cursor.fetchall())
 ```
 
-After that, when we look at the columns for yelp_review:
+After that, we can also look at the columns for yelp_review:
 
 ``` python
 cursor.execute('DESCRIBE yelp_review')
