@@ -70,7 +70,13 @@ conda install -c conda-forge sasl jupyterlab openpyxl plotly
 ssh -L 10000:localhost:10000 maria_dev@127.0.0.1
 ```
 
-### 4. Follow the rest of the set-up as written in the .md file.
+### 4. Move json files into HDFS
+```bash
+hdfs dfs -put /path/to/yelp_academic_dataset_business.json hdfs://user/maria_dev/
+hdfs dfs -put /path/to/yelp_academic_dataset_reviews.json hdfs://user/maria_dev/
+```
+
+### 5. Follow the rest of the set-up as written in the .md file.
 
 
 
